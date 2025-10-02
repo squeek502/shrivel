@@ -13,15 +13,15 @@ Ultimately, the intention is to use this repository as a reference for an upcomi
 
 ## An explanation of the algorithm
 
-As mentioned previously, only ASCII text is supported (byte values from 0-127). This is because a compressed stream is read as a series of bytes, where ASCII characters are encoded verbatim, and if the most significant bit of a byte is set, then that byte encodes a "match", which has both a length (2 bits encoding the values 3-6) and a distance (5 bits encoding the values 1-32). A match essentially means "look back `<distance>` bytes in the previously decompressed data and copy `<length>` bytes starting from that position."
+As mentioned previously, only ASCII text is supported (byte values from 0-127). This is because a compressed stream is read as a series of bytes, where ASCII characters are encoded verbatim, and if the most significant bit of a byte is set, then that byte encodes a "match", which has both a distance (5 bits encoding the values 1-32) and a length (2 bits encoding the values 3-6). A match essentially means "look back `<distance>` bytes in the previously decompressed data and copy `<length>` bytes starting from that position."
 
-So, let's say you had this ASCII data:
+So, let's say you had this 8-byte ASCII data:
 
 ```
 a123a123
 ```
 
-That could be compressed into 4 bytes like so:
+That could be compressed into 5 bytes like so:
 
 ```
 a123<match:distance=4:len=4>
