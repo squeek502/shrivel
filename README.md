@@ -4,8 +4,8 @@ A very simple [LZ77](https://en.wikipedia.org/wiki/LZ77_and_LZ78) compression al
 
 The only intended use-case of this repository is to serve as a way to understand Zig's [writergate changes](https://ziglang.org/download/0.15.1/release-notes.html#Writergate). To serve that goal, there are two implementations:
 
-- One using the 0.14.0 `GenericReader`/`GenericWriter` API (`src/old.zig`)
-- One using the 0.15.1 `Reader`/`Writer` API (`src/new.zig`)
+- One using the 0.14.0 `GenericReader`/`GenericWriter` API ([`src/old.zig`](src/old.zig))
+- One using the 0.15.1 `Reader`/`Writer` API ([`src/new.zig`](src/new.zig))
 
 The goal is for these implementations to be as correct as possible, and to prove that correctness as best as possible (and/or find bugs in the `Reader`/`Writer` interfaces). As of now, I *think* the implementations may be correct, but proving that is still very much a work-in-progress.
 
