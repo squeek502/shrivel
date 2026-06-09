@@ -79,11 +79,52 @@ pub const Decompress = struct {
     }
 
     fn rebaseIndirect(r: *std.Io.Reader, capacity: usize) std.Io.Reader.RebaseError!void {
-        // This is not actually possible to assert, as there's no safe guard in place.
-        // https://github.com/ziglang/zig/issues/25103
-        // We're supposed to be able to assert this, though.
-        //std.debug.assert(capacity <= r.buffer.len - window_len);
+        // Rebase contract guarantees
+        std.debug.assert(capacity <= r.buffer.len);
         std.debug.assert(r.end + capacity > r.buffer.len);
+
+        const available = r.buffer.len - @min(r.seek, r.end - window_len);
+        if (available >= capacity) {
+            // Happy path: can just shift the existing bytes while retaining window
+            rebaseByShifting(r);
+        } else {
+            // Unhappy path: must make `available >= capacity` by any
+            // means necessary, including reading as much as needed to get
+            // the window to contain the necessary amount of *buffered* bytes
+            // (the window can contain bytes before `seek` that need to be
+            // preserved, and the only way to cycle those out is to read
+            // new bytes in).
+            //
+            // For example, in this scenario:
+            //
+            //   ┌────────requested capacity──────────┐
+            //      ┌───────window_len─────────┐
+            //   |...............|.............|.........|
+            //                  seek          end
+            //
+            // we can only shift the window back a bit to free up capacity, but
+            // not enough to fulfill the entire requested capacity. In order to
+            // do so, we need to read in enough new bytes to get to this state
+            // (there are many viable states, this is just one possibility):
+            //
+            //   ┌────────requested capacity──────────┐
+            //   ┌───────window_len─────────┐
+            //   |..........................|............|
+            //  seek                       end
+            //
+            // So, free up as much space as we can now just so we can read as much
+            // as possible on the first stream.
+            rebaseByShifting(r);
+            while (true) {
+                // Now stream until there are enough available bytes to satisfy `capacity`.
+                try streamIndirectInner(r);
+                const available_now = r.buffer.len - @min(r.seek, r.end - window_len);
+                if (available_now >= capacity) break;
+            }
+        }
+    }
+
+    fn rebaseByShifting(r: *std.Io.Reader) void {
         const discard_n = @min(r.seek, r.end - window_len);
         const keep = r.buffer[discard_n..r.end];
         @memmove(r.buffer[0..keep.len], keep);
@@ -137,7 +178,7 @@ pub const Decompress = struct {
         // `r.buffer.len - r.end < window_len` so that we ensure that we always write
         // at least `r.buffer.len - window_len` bytes into the buffer each `stream` call.
         if (r.buffer.len == r.end) {
-            rebaseIndirect(r, r.buffer.len - window_len) catch unreachable;
+            rebaseByShifting(r);
         }
 
         var writer: std.Io.Writer = .{
@@ -357,6 +398,17 @@ test "Decompress readVecAll" {
     try decompress.reader.readVecAll(&out_vec);
 
     try std.testing.expectEqualSlices(u8, test_data_plain, out_buf_exact[0..]);
+}
+
+test "Decompress rebase entire buffer length" {
+    var in: std.Io.Reader = .fixed(test_data_long_compressed);
+
+    var decompress_buf: [Decompress.min_buffer_size]u8 = undefined;
+    var decompress: Decompress = .init(&in, &decompress_buf);
+    try decompress.reader.fill(window_len);
+    decompress.reader.toss(window_len);
+    // Rebase the entire length of the buffer
+    _ = try decompress.reader.rebase(decompress_buf.len);
 }
 
 pub const Compress = struct {
