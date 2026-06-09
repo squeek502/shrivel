@@ -14,9 +14,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const test_filters = b.option([]const []const u8, "test-filter", "Skip tests that do not match any filter") orelse &[0][]const u8{};
+
     const main_test = b.addTest(.{
         .name = "test",
         .root_module = shrivel,
+        .filters = test_filters,
     });
     const run_test_new = b.addRunArtifact(main_test);
     const test_step = b.step("test", "Run all tests");
