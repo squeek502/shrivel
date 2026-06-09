@@ -126,9 +126,9 @@ pub const test_data_compressed = "foobar" ++ &[_]u8{
 };
 
 const quad_window_len = window_len * 4;
-pub const test_data_long_plain = "a" ** (quad_window_len - 1);
+pub const test_data_long_plain = &(@as([quad_window_len - 1]u8, @splat('a')));
 pub const test_data_long_compressed = "a" ++ &[_]u8{
     @bitCast(Encoded.backReference(.{ .distance = 1, .length = 6 })),
-} ++ &([_]u8{
+} ++ &(@as([quad_window_len / max_match_len - 1]u8, @splat(
     @bitCast(Encoded.backReference(.{ .distance = 6, .length = 6 })),
-} ** (quad_window_len / max_match_len - 1));
+)));

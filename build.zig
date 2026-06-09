@@ -1,11 +1,12 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const use_new = builtin.zig_version.minor >= 15;
+
 pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
-    const use_new = builtin.zig_version.minor >= 15;
     const root_path = if (use_new) "src/new.zig" else "src/old.zig";
 
     const shrivel = b.createModule(.{
@@ -47,7 +48,11 @@ fn addFuzzer(
         }),
     });
     fuzz_lib.root_module.addImport("shrivel", mod);
-    fuzz_lib.want_lto = true;
+    if (use_new) {
+        fuzz_lib.lto = .full;
+    } else {
+        fuzz_lib.want_lto = true;
+    }
     fuzz_lib.bundle_compiler_rt = true;
     // Seems to be necessary for LLVM >= 15
     fuzz_lib.root_module.pic = true;
