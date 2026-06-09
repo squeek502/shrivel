@@ -451,13 +451,16 @@ pub const Compress = struct {
             switch (pattern.len) {
                 0 => {},
                 1 => {
-                    @memset(w.buffer[w.end..][0..splat], pattern[0]);
-                    w.end += splat;
+                    const len = @min(w.buffer[w.end..].len, splat);
+                    @memset(w.buffer[w.end..][0..len], pattern[0]);
+                    w.end += len;
                 },
                 else => {
                     const dest = w.buffer[w.end..];
                     for (0..splat) |i| {
-                        const remaining = dest[i * pattern.len ..];
+                        const start_i = i * pattern.len;
+                        if (start_i >= dest.len) break;
+                        const remaining = dest[start_i..];
                         const len = @min(pattern.len, remaining.len);
                         @memcpy(remaining[0..len], pattern[0..len]);
                         w.end += len;
